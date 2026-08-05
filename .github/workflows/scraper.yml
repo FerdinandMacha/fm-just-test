@@ -3,42 +3,37 @@ name: Scheduled Web Scraping Agent
 on:
   schedule:
     - cron: '0 */6 * * *' # Runs every 6 hours
-  workflow_dispatch:      # Allows manual testing from the Actions tab
+  workflow_dispatch:      # Manual run trigger
 
 jobs:
   scrape-and-analyze:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # Required to push git commits back to main
+      contents: write     # Required to commit state back to repository
 
     steps:
       - name: Checkout Repository Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full history so git push works cleanly
+          fetch-depth: 0
 
-      - name: Set Up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.10'
+          enable-cache: true  # Caches dependency builds automatically across runs
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install httpx beautifulsoup4
-
-      - name: Execute Agent Script
+      - name: Execute Agent Script with uv
         env:
           GEMINI_API_KEY: ${{ secrets.MY_GEMINI_API_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        run: python scraper.py
+        run: uv run scraper.py  # Automatically fetches dependencies declared in PEP 723 header
 
       - name: Commit and Push Updated Content State
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add last_content.txt
-          # Only commit and push if last_content.txt actually changed
+          
           if ! git diff --cached --quiet; then
             git commit -m "chore: update scraped web content baseline [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
