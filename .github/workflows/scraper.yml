@@ -1,35 +1,47 @@
-name: Web Scraper Monitor
+name: Scheduled Web Scraping Agent
 
 on:
   schedule:
-    - cron: '0 */12 * * *' # Runs every X hours
-  workflow_dispatch: # Allows manual triggers from GitHub UI
+    - cron: '0 */6 * * *' # Runs every 6 hours
+  workflow_dispatch:      # Allows manual testing from the Actions tab
 
 jobs:
-  scrape:
+  scrape-and-analyze:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    permissions:
+      contents: write     # Required to push git commits back to main
 
-      - name: Set up Python
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches full history so git push works cleanly
+
+      - name: Set Up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Restore Cache for Baseline File
-        uses: actions/cache@v4
-        with:
-          path: last_content.txt
-          key: scraper-last-content-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: |
-            scraper-last-content-${{ runner.os }}-
+          python-version: '3.10'
 
       - name: Install Dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install httpx beautifulsoup4
 
-      - name: Run Web Scraper
+      - name: Execute Agent Script
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.MY_GEMINI_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python scraper.py
+
+      - name: Commit and Push Updated Content State
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_content.txt
+          # Only commit and push if last_content.txt actually changed
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update scraped web content baseline [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No changes to commit."
+          fi
