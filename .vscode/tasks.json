@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "uv sync script",
+      "type": "shell",
+      "command": "uv pip install -r ${file} --python \"${config:scrapTest.venvPath}/bin/python\""
+    }
+  ]
+}
