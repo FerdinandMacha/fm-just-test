@@ -43,6 +43,10 @@ ENV_OVERRIDES = {
     "smtp_password": "SMTP_PASSWORD",
 }
 
+# Support the production variable naming used by the deployment environment.
+if os.getenv("GMAIL_PASSWORD"):
+    ENV_OVERRIDES["smtp_password"] = "GMAIL_PASSWORD"
+
 CONFIG = load_config(
     base_dir=BASE_DIR,
     defaults=DEFAULT_CONFIG,
