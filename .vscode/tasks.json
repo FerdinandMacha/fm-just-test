@@ -4,7 +4,7 @@
     {
       "label": "uv sync script",
       "type": "shell",
-      "command": "uv pip install -r ${file} --python \"${config:scrapTest.venvPath}/bin/python\""
+      "command": "uv pip install -r ${file} --python \"${config:python.defaultInterpreterPath}\""
     }
   ]
 }

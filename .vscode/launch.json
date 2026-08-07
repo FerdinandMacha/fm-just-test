@@ -16,7 +16,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "python": "${config:scrapTest.venvPath}/bin/python",
+            "python": "${config:python.defaultInterpreterPath}",
             "preLaunchTask": "uv sync script",
             "console": "integratedTerminal",
             "justMyCode": true

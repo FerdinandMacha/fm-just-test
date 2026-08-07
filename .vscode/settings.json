@@ -1,3 +1,4 @@
 {
-  "scrapTest.venvPath": "/home/fero/Github/scrap-test-venv"
+  "python.defaultInterpreterPath": "/home/fero/Github/scrap-test-venv/bin/python",
+  "python.terminal.activateEnvironment": true
 }
