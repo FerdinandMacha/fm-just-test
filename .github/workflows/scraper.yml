@@ -2,41 +2,23 @@ name: Scheduled Web Scraping Agent
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Runs every 6 hours
-  workflow_dispatch:      # Manual run trigger
+    - cron: '17 8-19/2 * * *' # Start at hour 8:17 UTC, run every 2 hours up through hour 19:17 UTC during event days
+  workflow_dispatch:
 
 jobs:
   scrape-and-analyze:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write     # Required to commit state back to repository
-
     steps:
       - name: Checkout Repository Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          enable-cache: true  # Caches dependency builds automatically across runs
+          enable-cache: true
 
       - name: Execute Agent Script with uv
         env:
           GEMINI_API_KEY: ${{ secrets.MY_GEMINI_API_KEY }}
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        run: uv run scraper.py  # Automatically fetches dependencies declared in PEP 723 header
-
-      - name: Commit and Push Updated Content State
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_content.txt
-          
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update scraped web content baseline [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          else
-            echo "No changes to commit."
-          fi
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        run: uv run scraper.py

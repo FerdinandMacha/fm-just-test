@@ -23,18 +23,19 @@ except ImportError:  # pragma: no cover - allows tests to run without the packag
     genai = None
     types = None
 
+from zoneinfo import ZoneInfo
 from config_loader import load_config
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG = {
     "target_url": "https://www.mujkaktus.cz/chces-pridat",
     "gemini_model": "gemini-3.5-flash-lite",
-    "email_to": REDACTED"",
-    "email_from": REDACTED"",
+    "email_to": "user@gmail.com",
+    "email_from": "user@gmail.com",
     "email_subject": "Event status update",
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
-    "smtp_username": REDACTED"",
+    "smtp_username": "user@gmail.com",
     "smtp_password": "",
 }
 ENV_OVERRIDES = {
@@ -72,8 +73,24 @@ SMTP_USERNAME = CONFIG["smtp_username"]
 SMTP_PASSWORD = CONFIG["smtp_password"]
 
 def get_web_content(url):
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-    response = httpx.get(url, headers=headers, timeout=10)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "cs-CZ,cs;q=0.9,en;q=0.8,en-US;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "max-age=0",
+        "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    
+    # follow_redirects=True ensures httpx handles any 301/302 redirects seamlessly
+    response = httpx.get(url, headers=headers, timeout=10, follow_redirects=True)
     response.raise_for_status()
     
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -123,7 +140,8 @@ def parse_analysis_response(text):
 
 
 def analyze_with_ai(page_text, client):
-    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M")
+    tz = ZoneInfo("Europe/Prague")
+    current_datetime = datetime.now(tz).strftime("%d. %m. %Y, %H:%M")
     prompt = build_prompt(page_text, current_datetime)
 
     if types is None or genai is None:
