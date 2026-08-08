@@ -6,8 +6,9 @@
 # ]
 # ///
 
+import sys
+import traceback
 import os
-import re
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
@@ -27,20 +28,24 @@ from zoneinfo import ZoneInfo
 from config_loader import load_config
 
 BASE_DIR = Path(__file__).resolve().parent
+
 DEFAULT_CONFIG = {
     "target_url": "https://www.mujkaktus.cz/chces-pridat",
     "gemini_model": "gemini-3.5-flash-lite",
-    "email_to": "user@gmail.com",
-    "email_from": "user@gmail.com",
+    "gemini_api_key": "",
+    "email_to": "",
+    "email_from": "",
     "email_subject": "Event status update",
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
-    "smtp_username": "user@gmail.com",
+    "smtp_username": "",
     "smtp_password": "",
 }
+
 ENV_OVERRIDES = {
     "target_url": "TARGET_URL",
     "gemini_model": "GEMINI_MODEL",
+    "gemini_api_key": "GEMINI_API_KEY",
     "email_to": "EMAIL_TO",
     "email_from": "EMAIL_FROM",
     "email_subject": "EMAIL_SUBJECT",
@@ -50,9 +55,14 @@ ENV_OVERRIDES = {
     "smtp_password": "SMTP_PASSWORD",
 }
 
-# Support the production variable naming used by the deployment environment.
+# Support production environment variable aliases
 if os.getenv("GMAIL_PASSWORD"):
     ENV_OVERRIDES["smtp_password"] = "GMAIL_PASSWORD"
+
+if os.getenv("EMAIL"):
+    ENV_OVERRIDES["email_to"] = "EMAIL"
+    ENV_OVERRIDES["email_from"] = "EMAIL"
+    ENV_OVERRIDES["smtp_username"] = "EMAIL"
 
 CONFIG = load_config(
     base_dir=BASE_DIR,
@@ -63,6 +73,7 @@ CONFIG = load_config(
 # --- CONFIGURATION ---
 TARGET_URL = CONFIG["target_url"]
 MODEL_NAME = CONFIG["gemini_model"]
+GEMINI_API_KEY = CONFIG["gemini_api_key"]
 
 EMAIL_TO = CONFIG["email_to"]
 EMAIL_FROM = CONFIG["email_from"]
@@ -71,6 +82,7 @@ SMTP_HOST = CONFIG["smtp_host"]
 SMTP_PORT = CONFIG["smtp_port"]
 SMTP_USERNAME = CONFIG["smtp_username"]
 SMTP_PASSWORD = CONFIG["smtp_password"]
+
 
 def get_web_content(url):
     headers = {
@@ -88,13 +100,13 @@ def get_web_content(url):
         "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
     }
-    
-    # follow_redirects=True ensures httpx handles any 301/302 redirects seamlessly
+
     response = httpx.get(url, headers=headers, timeout=10, follow_redirects=True)
     response.raise_for_status()
-    
-    soup = BeautifulSoup(response.text, 'html.parser')
+
+    soup = BeautifulSoup(response.text, "html.parser")
     return soup.get_text(separator="\n", strip=True)
+
 
 def build_prompt(page_text, current_datetime):
     return f"""
@@ -172,6 +184,7 @@ def analyze_with_ai(page_text, client):
             "reason": f"Failed to parse AI response: {str(e)}",
         }
 
+
 def send_notification(message):
     if not SMTP_PASSWORD:
         print("Email notification skipped: SMTP_PASSWORD not set.")
@@ -197,28 +210,57 @@ def send_notification(message):
     except Exception as e:
         print(f"Failed to send email notification: {e}")
 
+
 def main():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: Missing GEMINI_API_KEY environment variable.")
-        return
+    try:
+        # Local variables pull consistently from CONFIG now
+        local_gemini_api_key = GEMINI_API_KEY
+        local_email_to = EMAIL_TO
+        local_email_from = EMAIL_FROM
+        local_smtp_username = SMTP_USERNAME
 
-    client = genai.Client(api_key=api_key)
+        # --- SET BREAKPOINT ON THE LINE BELOW ---
+        missing = [
+            name
+            for name, val in {
+                "GEMINI_API_KEY": local_gemini_api_key,
+                "EMAIL_TO": local_email_to,
+                "EMAIL_FROM": local_email_from,
+                "SMTP_USERNAME": local_smtp_username,
+            }.items()
+            if not val
+        ]
 
-    print("Fetching webpage...")
-    current_content = get_web_content(TARGET_URL)
+        if missing:
+            print(f"Error: Missing required config: {', '.join(missing)}", file=sys.stderr)
+            sys.exit(1)
 
-    print("Analyzing event status with Gemini...")
-    ai_analysis = analyze_with_ai(current_content, client)
-    print("--- AI Analysis Result ---")
-    print(ai_analysis)
+        client = genai.Client(api_key=local_gemini_api_key)
 
-    if ai_analysis["status"] in {"ACTIVE", "UPCOMING"}:
-        summary = ai_analysis.get("reason", "Event status updated")
-        alert_msg = f"Event status: {ai_analysis['status']}\n{summary}"
-        send_notification(alert_msg)
-    else:
-        print("No actionable event status detected.")
+        print("Fetching webpage...")
+        current_content = get_web_content(TARGET_URL)
+
+        print("Analyzing event status with Gemini...")
+        ai_analysis = analyze_with_ai(current_content, client)
+        print("--- AI Analysis Result ---")
+        print(ai_analysis)
+
+        if ai_analysis["status"] == "UNKNOWN":
+            print(f"Error: AI analysis failed - {ai_analysis['reason']}", file=sys.stderr)
+            sys.exit(1)
+
+        if ai_analysis["status"] in {"ACTIVE", "UPCOMING"}:
+            summary = ai_analysis.get("reason", "Event status updated")
+            alert_msg = f"Event status: {ai_analysis['status']}\n{summary}"
+            send_notification(alert_msg)
+        else:
+            print("No actionable event status detected.")
+
+    except Exception:
+        print("Unhandled error in main():", file=sys.stderr)
+        traceback.print_exc()
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

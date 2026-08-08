@@ -1,12 +1,9 @@
 {
   "target_url": "https://www.mujkaktus.cz/chces-pridat",
-  "last_data_file": "last_content.txt",
   "gemini_model": "gemini-3.5-flash-lite",
+  "gemini_api_key": "",
   "email_to": REDACTED"",
   "email_from": REDACTED"",
-  "email_subject": "The watched web page changed",
-  "smtp_host": "smtp.gmail.com",
-  "smtp_port": 587,
   "smtp_username": REDACTED"",
   "smtp_password": ""
 }
