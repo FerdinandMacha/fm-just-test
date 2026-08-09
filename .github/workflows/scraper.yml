@@ -21,4 +21,5 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.MY_GEMINI_API_KEY }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          EMAIL: ${{ secrets.EMAIL }}
         run: uv run scraper.py
