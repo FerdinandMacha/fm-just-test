@@ -118,7 +118,7 @@ CLASSIFICATION RULES:
 1. Compare the page's event date and time window against CURRENT_DATETIME.
 2. Return STATUS: ACTIVE if the event date matches CURRENT_DATETIME's date AND current time is WITHIN the start and end time.
 3. Return STATUS: UPCOMING if the event date matches CURRENT_DATETIME's date AND current time is BEFORE the start time.
-4. Return STATUS: INACTIVE for all other cases (event date does not match CURRENT_DATETIME's date, current time is after the end time, or no event listed).
+4. Return STATUS: INACTIVE for all other cases (e.g. current time is after the end time, or no event listed).
 
 OUTPUT FORMAT:
 STATUS: ACTIVE | UPCOMING | INACTIVE
