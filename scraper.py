@@ -30,18 +30,14 @@ from config_loader import load_config
 
 BASE_DIR = Path(__file__).resolve().parent
 
-cfg.register(
-    "target_url", "https://www.mujkaktus.cz/chces-pridat", env_vars=("TARGET_URL",)
-)
-cfg.register("gemini_model", "gemini-3.5-flash-lite", env_vars=("GEMINI_MODEL",))
-cfg.register(
-    "gemini_api_key", "", secret=True, required=True, env_vars=("GEMINI_API_KEY",)
-)
+cfg.register("target_url", "https://www.mujkaktus.cz/chces-pridat")
+cfg.register("gemini_model", "gemini-3.5-flash-lite")
+cfg.register("gemini_api_key", "", secret=True, required=True)
 cfg.register("email_to", "", required=True, env_vars=("EMAIL", "EMAIL_TO"))
 cfg.register("email_from", "", required=True, env_vars=("EMAIL", "EMAIL_FROM"))
-cfg.register("email_subject", "Event status update", env_vars=("EMAIL_SUBJECT",))
-cfg.register("smtp_host", "smtp.gmail.com", env_vars=("SMTP_HOST",))
-cfg.register("smtp_port", 587, coerce=int, env_vars=("SMTP_PORT",))
+cfg.register("email_subject", "Event status update")
+cfg.register("smtp_host", "smtp.gmail.com")
+cfg.register("smtp_port", 587, coerce=int)
 cfg.register(
     "smtp_username",
     "",

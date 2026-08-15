@@ -34,18 +34,27 @@ def register(
     *,
     secret: bool = False,
     required: bool = False,
-    env_vars: Iterable[str] = (),
+    env_vars: Optional[Iterable[str]] = None,
     coerce: Optional[Callable[[str], Any]] = None,
 ) -> None:
     """Declare one config field. Call once per field, at import time.
 
-    env_vars, if more than one is given, are tried in order - the first
-    one set to a non-empty value in the environment wins. This is how a
-    field can have both a normal name (e.g. SMTP_PASSWORD) and a
-    production alias (e.g. GMAIL_PASSWORD) that takes priority.
+    env_vars controls where this field's value can come from besides the
+    config file:
+      - omitted (None): defaults to the field's name upper-cased, e.g.
+        "smtp_host" -> "SMTP_HOST". This is the common case.
+      - an explicit tuple: use this when the env var name doesn't match
+        the field name, or when more than one name should be tried, in
+        order - the first one set to a non-empty value wins. This is how
+        a field can have both its normal name (e.g. SMTP_PASSWORD) and a
+        production alias (e.g. GMAIL_PASSWORD) that takes priority.
+      - () (explicit empty tuple): this field cannot be set via the
+        environment at all - only the config file or the default apply.
     """
     if name in _REGISTRY:
         raise ValueError(f"Config field {name!r} is already registered")
+    if env_vars is None:
+        env_vars = (name.upper(),)
     _REGISTRY[name] = ConfigField(
         name=name,
         default=default,
