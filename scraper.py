@@ -58,19 +58,6 @@ except ValueError as exc:
     print(f"Error: {exc}", file=sys.stderr)
     sys.exit(1)
 
-# --- CONFIGURATION ---
-TARGET_URL = CONFIG["target_url"]
-MODEL_NAME = CONFIG["gemini_model"]
-GEMINI_API_KEY = CONFIG["gemini_api_key"]
-
-EMAIL_TO = CONFIG["email_to"]
-EMAIL_FROM = CONFIG["email_from"]
-EMAIL_SUBJECT = CONFIG["email_subject"]
-SMTP_HOST = CONFIG["smtp_host"]
-SMTP_PORT = CONFIG["smtp_port"]
-SMTP_USERNAME = CONFIG["smtp_username"]
-SMTP_PASSWORD = CONFIG["smtp_password"]
-
 
 def get_web_content(url):
     headers = {
@@ -159,7 +146,7 @@ def analyze_with_ai(page_text, client):
 
     try:
         response = client.models.generate_content(
-            model=MODEL_NAME,
+            model=CONFIG["gemini_model"],
             contents=prompt,
             config=config,
         )
@@ -174,25 +161,27 @@ def analyze_with_ai(page_text, client):
 
 
 def send_notification(message):
-    if not SMTP_PASSWORD:
+    if not CONFIG["smtp_password"]:
         print("Email notification skipped: SMTP_PASSWORD not set.")
         return
 
-    recipients = [address.strip() for address in EMAIL_TO.split(",") if address.strip()]
+    recipients = [
+        address.strip() for address in CONFIG["email_to"].split(",") if address.strip()
+    ]
     if not recipients:
         print("Email notification skipped: EMAIL_TO is empty.")
         return
 
     msg = EmailMessage()
-    msg["Subject"] = EMAIL_SUBJECT
-    msg["From"] = EMAIL_FROM
+    msg["Subject"] = CONFIG["email_subject"]
+    msg["From"] = CONFIG["email_from"]
     msg["To"] = ", ".join(recipients)
     msg.set_content(message)
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(CONFIG["smtp_host"], CONFIG["smtp_port"]) as server:
             server.starttls()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.login(CONFIG["smtp_username"], CONFIG["smtp_password"])
             server.send_message(msg)
         print(f"Email notification sent to {msg['To']}")
     except Exception as e:
@@ -201,10 +190,10 @@ def send_notification(message):
 
 def main():
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=CONFIG["gemini_api_key"])
 
         print("Fetching webpage...")
-        current_content = get_web_content(TARGET_URL)
+        current_content = get_web_content(CONFIG["target_url"])
 
         print("Analyzing event status with Gemini...")
         ai_analysis = analyze_with_ai(current_content, client)
