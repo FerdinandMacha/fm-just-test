@@ -25,50 +25,42 @@ except ImportError:  # pragma: no cover - allows tests to run without the packag
     types = None
 
 from zoneinfo import ZoneInfo
+import config_registry as cfg
 from config_loader import load_config
 
 BASE_DIR = Path(__file__).resolve().parent
 
-DEFAULT_CONFIG = {
-    "target_url": "https://www.mujkaktus.cz/chces-pridat",
-    "gemini_model": "gemini-3.5-flash-lite",
-    "gemini_api_key": "",
-    "email_to": "",
-    "email_from": "",
-    "email_subject": "Event status update",
-    "smtp_host": "smtp.gmail.com",
-    "smtp_port": 587,
-    "smtp_username": "",
-    "smtp_password": "",
-}
-
-ENV_OVERRIDES = {
-    "target_url": "TARGET_URL",
-    "gemini_model": "GEMINI_MODEL",
-    "gemini_api_key": "GEMINI_API_KEY",
-    "email_to": "EMAIL_TO",
-    "email_from": "EMAIL_FROM",
-    "email_subject": "EMAIL_SUBJECT",
-    "smtp_host": "SMTP_HOST",
-    "smtp_port": "SMTP_PORT",
-    "smtp_username": "SMTP_USERNAME",
-    "smtp_password": "SMTP_PASSWORD",
-}
-
-# Support production environment variable aliases
-if os.getenv("GMAIL_PASSWORD"):
-    ENV_OVERRIDES["smtp_password"] = "GMAIL_PASSWORD"
-
-if os.getenv("EMAIL"):
-    ENV_OVERRIDES["email_to"] = "EMAIL"
-    ENV_OVERRIDES["email_from"] = "EMAIL"
-    ENV_OVERRIDES["smtp_username"] = "EMAIL"
-
-CONFIG = load_config(
-    base_dir=BASE_DIR,
-    defaults=DEFAULT_CONFIG,
-    env_overrides=ENV_OVERRIDES,
+cfg.register(
+    "target_url", "https://www.mujkaktus.cz/chces-pridat", env_vars=("TARGET_URL",)
 )
+cfg.register("gemini_model", "gemini-3.5-flash-lite", env_vars=("GEMINI_MODEL",))
+cfg.register(
+    "gemini_api_key", "", secret=True, required=True, env_vars=("GEMINI_API_KEY",)
+)
+cfg.register("email_to", "", required=True, env_vars=("EMAIL", "EMAIL_TO"))
+cfg.register("email_from", "", required=True, env_vars=("EMAIL", "EMAIL_FROM"))
+cfg.register("email_subject", "Event status update", env_vars=("EMAIL_SUBJECT",))
+cfg.register("smtp_host", "smtp.gmail.com", env_vars=("SMTP_HOST",))
+cfg.register("smtp_port", 587, coerce=int, env_vars=("SMTP_PORT",))
+cfg.register(
+    "smtp_username",
+    "",
+    secret=True,
+    required=True,
+    env_vars=("EMAIL", "SMTP_USERNAME"),
+)
+cfg.register(
+    "smtp_password",
+    "",
+    secret=True,
+    env_vars=("GMAIL_PASSWORD", "SMTP_PASSWORD"),
+)
+
+try:
+    CONFIG = load_config(base_dir=BASE_DIR)
+except ValueError as exc:
+    print(f"Error: {exc}", file=sys.stderr)
+    sys.exit(1)
 
 # --- CONFIGURATION ---
 TARGET_URL = CONFIG["target_url"]
@@ -213,29 +205,7 @@ def send_notification(message):
 
 def main():
     try:
-        # Local variables pull consistently from CONFIG now
-        local_gemini_api_key = GEMINI_API_KEY
-        local_email_to = EMAIL_TO
-        local_email_from = EMAIL_FROM
-        local_smtp_username = SMTP_USERNAME
-
-        # --- SET BREAKPOINT ON THE LINE BELOW ---
-        missing = [
-            name
-            for name, val in {
-                "GEMINI_API_KEY": local_gemini_api_key,
-                "EMAIL_TO": local_email_to,
-                "EMAIL_FROM": local_email_from,
-                "SMTP_USERNAME": local_smtp_username,
-            }.items()
-            if not val
-        ]
-
-        if missing:
-            print(f"Error: Missing required config: {', '.join(missing)}", file=sys.stderr)
-            sys.exit(1)
-
-        client = genai.Client(api_key=local_gemini_api_key)
+        client = genai.Client(api_key=GEMINI_API_KEY)
 
         print("Fetching webpage...")
         current_content = get_web_content(TARGET_URL)
