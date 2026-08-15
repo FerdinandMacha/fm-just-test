@@ -7,8 +7,7 @@ import config_registry as cfg
 
 
 def _resolve_config_path(base_dir, config_path):
-    default_config_path = config_path or base_dir / "config.json"
-    resolved = Path(os.getenv("SCRAPER_CONFIG", default_config_path))
+    resolved = Path(config_path) if config_path is not None else base_dir / "config.json"
     if not resolved.is_absolute():
         resolved = base_dir / resolved
     return resolved
@@ -43,7 +42,8 @@ def _apply_env_value(field, raw):
 
 
 def load_config(base_dir=None, config_path=None):
-    """Load config from config.json (or SCRAPER_CONFIG) plus the environment.
+    """Load config from config.json (or an explicit config_path) plus the
+    environment.
 
     Field names, defaults, secrecy, required-ness, and env var names all
     come from `config_registry` - this function only orchestrates reading
